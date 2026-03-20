@@ -130,12 +130,13 @@ async function detect() {
   const ctx = overlay.getContext('2d')
   ctx.clearRect(0, 0, overlay.width, overlay.height)
 
+  drawEmotionBars(ctx, result ? result.expressions : {})
+
   if (result) {
     const t = getTransform()
     const dominant = EMOTIONS.reduce((best, e) =>
       (result.expressions[e.key] ?? 0) > (result.expressions[best.key] ?? 0) ? e : best
     )
-    drawEmotionBars(ctx, result.expressions)
   }
 
   requestAnimationFrame(detect)
