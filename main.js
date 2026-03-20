@@ -3,12 +3,18 @@ import * as faceapi from 'face-api.js'
 const video = document.getElementById('video')
 const overlay = document.getElementById('overlay')
 const status = document.getElementById('status')
-const noFace = document.getElementById('no-face')
-const emotionBars = document.getElementById('emotion-bars')
 
 const MODELS_URL = `${import.meta.env.BASE_URL}models`
 
-const EMOTIONS = ['happy', 'sad', 'angry', 'surprised', 'fearful', 'disgusted', 'neutral']
+const EMOTIONS = [
+  { key: 'happy',     emoji: '😄', color: '#f9e54a' },
+  { key: 'sad',       emoji: '😢', color: '#6ab0f5' },
+  { key: 'angry',     emoji: '😠', color: '#f56a6a' },
+  { key: 'surprised', emoji: '😲', color: '#f5a96a' },
+  { key: 'fearful',   emoji: '😨', color: '#b06af5' },
+  { key: 'disgusted', emoji: '🤢', color: '#6af5a9' },
+  { key: 'neutral',   emoji: '😐', color: '#aaaaaa' },
+]
 
 async function loadModels() {
   await Promise.all([
@@ -27,56 +33,96 @@ async function startCamera() {
   video.play()
 }
 
-function resizeOverlay() {
+function syncOverlay() {
   overlay.width = video.videoWidth
   overlay.height = video.videoHeight
 }
 
-function drawFaceBox(ctx, detection) {
-  const { x, y, width, height } = detection.detection.box
-  // Flip x to match the mirrored video
-  const flippedX = overlay.width - x - width
+function drawFaceCircle(ctx, box, color) {
+  const { x, y, width, height } = box
+  const cx = overlay.width - x - width / 2
+  const cy = y + height / 2
+  const rx = width / 2 + 10
+  const ry = height / 2 + 16
 
-  ctx.strokeStyle = '#7c6af7'
-  ctx.lineWidth = 2
-  ctx.strokeRect(flippedX, y, width, height)
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+  ctx.strokeStyle = color
+  ctx.lineWidth = 3
+  ctx.shadowColor = color
+  ctx.shadowBlur = 12
+  ctx.stroke()
+  ctx.shadowBlur = 0
 }
 
-function updateEmotionBars(expressions) {
-  const dominant = Object.entries(expressions).reduce((a, b) => a[1] > b[1] ? a : b)[0]
+function drawDominantEmoji(ctx, box, emoji) {
+  const { x, y, width } = box
+  const cx = overlay.width - x - width / 2
+  const emojiY = y - 20
 
-  EMOTIONS.forEach(emotion => {
-    const row = document.querySelector(`.emotion-row[data-emotion="${emotion}"]`)
-    const bar = row.querySelector('.bar')
-    const score = row.querySelector('.score')
-    const pct = Math.round((expressions[emotion] ?? 0) * 100)
+  ctx.font = '52px serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillText(emoji, cx, emojiY)
+}
 
-    bar.style.width = `${pct}%`
-    score.textContent = `${pct}%`
-    row.classList.toggle('dominant', emotion === dominant)
+function drawEmotionBars(ctx, expressions) {
+  const W = overlay.width
+  const H = overlay.height
+  const barW = 120
+  const barH = 6
+  const rowH = 26
+  const padX = 16
+  const padY = 16
+  const startY = H - padY - EMOTIONS.length * rowH
+
+  // background pill
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'
+  ctx.beginPath()
+  ctx.roundRect(padX - 8, startY - 8, barW + 48, EMOTIONS.length * rowH + 16, 12)
+  ctx.fill()
+
+  EMOTIONS.forEach(({ key, emoji, color }, i) => {
+    const pct = expressions[key] ?? 0
+    const y = startY + i * rowH
+
+    // emoji label
+    ctx.font = '16px serif'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(emoji, padX, y + rowH / 2)
+
+    // bar track
+    const bx = padX + 26
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'
+    ctx.beginPath()
+    ctx.roundRect(bx, y + rowH / 2 - barH / 2, barW, barH, 3)
+    ctx.fill()
+
+    // bar fill
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.roundRect(bx, y + rowH / 2 - barH / 2, barW * pct, barH, 3)
+    ctx.fill()
   })
 }
 
 async function detect() {
   const ctx = overlay.getContext('2d')
-  resizeOverlay()
+  syncOverlay()
 
   const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
-
-  const result = await faceapi
-    .detectSingleFace(video, options)
-    .withFaceExpressions()
+  const result = await faceapi.detectSingleFace(video, options).withFaceExpressions()
 
   ctx.clearRect(0, 0, overlay.width, overlay.height)
 
   if (result) {
-    drawFaceBox(ctx, result)
-    noFace.classList.add('hidden')
-    emotionBars.classList.remove('hidden')
-    updateEmotionBars(result.expressions)
-  } else {
-    noFace.classList.remove('hidden')
-    emotionBars.classList.add('hidden')
+    const dominant = EMOTIONS.reduce((best, e) =>
+      (result.expressions[e.key] ?? 0) > (result.expressions[best.key] ?? 0) ? e : best
+    )
+    drawFaceCircle(ctx, result.detection.box, dominant.color)
+    drawDominantEmoji(ctx, result.detection.box, dominant.emoji)
+    drawEmotionBars(ctx, result.expressions)
   }
 
   requestAnimationFrame(detect)
@@ -84,15 +130,11 @@ async function detect() {
 
 async function main() {
   try {
-    status.textContent = 'Loading models...'
+    status.textContent = 'Loading...'
     await loadModels()
-
     status.textContent = 'Starting camera...'
     await startCamera()
-
-    status.textContent = 'Ready'
-    status.classList.add('ready')
-
+    status.classList.add('hidden')
     detect()
   } catch (err) {
     status.textContent = `Error: ${err.message}`
