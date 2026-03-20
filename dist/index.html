@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Emotion Detector</title>
+  <script type="module" crossorigin src="/emotion_detector/assets/index-DDkMMtQD.js"></script>
+  <link rel="stylesheet" crossorigin href="/emotion_detector/assets/index-BIr9_MIY.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Emotion Detector</h1>
+    </header>
+
+    <div id="camera-container">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div id="status">Loading models...</div>
+    </div>
+
+    <div id="emotions-panel">
+      <div id="no-face">Point camera at a face</div>
+      <div id="emotion-bars" class="hidden">
+        <div class="emotion-row" data-emotion="happy">
+          <span class="label">Happy</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="sad">
+          <span class="label">Sad</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="angry">
+          <span class="label">Angry</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="surprised">
+          <span class="label">Surprised</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="fearful">
+          <span class="label">Fearful</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="disgusted">
+          <span class="label">Disgusted</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+        <div class="emotion-row" data-emotion="neutral">
+          <span class="label">Neutral</span>
+          <div class="bar-track"><div class="bar"></div></div>
+          <span class="score">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
