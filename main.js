@@ -92,9 +92,9 @@ function drawEmotionBars(ctx, expressions) {
   const startY = H - padY - EMOTIONS.length * rowH
 
   // background pill
-  ctx.fillStyle = 'rgba(0,0,0,0.45)'
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'
   ctx.beginPath()
-  ctx.roundRect(padX - 8, startY - 8, barW + 48, EMOTIONS.length * rowH + 16, 12)
+  ctx.roundRect(padX - 8, startY - 8, barW + 80, EMOTIONS.length * rowH + 16, 12)
   ctx.fill()
 
   EMOTIONS.forEach(({ key, emoji, color }, i) => {
@@ -119,6 +119,13 @@ function drawEmotionBars(ctx, expressions) {
     ctx.beginPath()
     ctx.roundRect(bx, y + rowH / 2 - barH / 2, barW * pct, barH, 3)
     ctx.fill()
+
+    // percentage label
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.font = '11px monospace'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`${Math.round(pct * 100)}%`, bx + barW + 6, y + rowH / 2)
   })
 }
 
