@@ -34,19 +34,37 @@ async function startCamera() {
 }
 
 function syncOverlay() {
-  overlay.width = video.videoWidth
-  overlay.height = video.videoHeight
+  overlay.width = overlay.offsetWidth
+  overlay.height = overlay.offsetHeight
 }
 
-function drawFaceCircle(ctx, box, color) {
-  const { x, y, width, height } = box
-  const cx = overlay.width - x - width / 2
-  const cy = y + height / 2
-  const rx = width / 2 + 10
-  const ry = height / 2 + 16
+// Returns scale/offset that matches the video's object-fit:cover transform
+function getTransform() {
+  const dW = overlay.width
+  const dH = overlay.height
+  const vW = video.videoWidth
+  const vH = video.videoHeight
+  const scale = Math.max(dW / vW, dH / vH)
+  const offsetX = (dW - vW * scale) / 2
+  const offsetY = (dH - vH * scale) / 2
+  return { scale, offsetX, offsetY, dW }
+}
+
+// Convert video coords to canvas coords, with x-flip to match mirrored video
+function toCanvas(vx, vy, t) {
+  return {
+    x: t.dW - (vx * t.scale + t.offsetX),
+    y: vy * t.scale + t.offsetY,
+  }
+}
+
+function drawFaceCircle(ctx, box, color, t) {
+  const center = toCanvas(box.x + box.width / 2, box.y + box.height / 2, t)
+  const rx = (box.width / 2 + 10) * t.scale
+  const ry = (box.height / 2 + 16) * t.scale
 
   ctx.beginPath()
-  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+  ctx.ellipse(center.x, center.y, rx, ry, 0, 0, Math.PI * 2)
   ctx.strokeStyle = color
   ctx.lineWidth = 3
   ctx.shadowColor = color
@@ -55,15 +73,12 @@ function drawFaceCircle(ctx, box, color) {
   ctx.shadowBlur = 0
 }
 
-function drawDominantEmoji(ctx, box, emoji) {
-  const { x, y, width } = box
-  const cx = overlay.width - x - width / 2
-  const emojiY = y - 20
-
-  ctx.font = '52px serif'
+function drawDominantEmoji(ctx, box, emoji, t) {
+  const pos = toCanvas(box.x + box.width / 2, box.y, t)
+  ctx.font = `${52 * t.scale}px serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.fillText(emoji, cx, emojiY)
+  ctx.fillText(emoji, pos.x, pos.y - 8 * t.scale)
 }
 
 function drawEmotionBars(ctx, expressions) {
@@ -108,20 +123,18 @@ function drawEmotionBars(ctx, expressions) {
 }
 
 async function detect() {
-  const ctx = overlay.getContext('2d')
-  syncOverlay()
-
-  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 })
   const result = await faceapi.detectSingleFace(video, options).withFaceExpressions()
 
+  syncOverlay()
+  const ctx = overlay.getContext('2d')
   ctx.clearRect(0, 0, overlay.width, overlay.height)
 
   if (result) {
+    const t = getTransform()
     const dominant = EMOTIONS.reduce((best, e) =>
       (result.expressions[e.key] ?? 0) > (result.expressions[best.key] ?? 0) ? e : best
     )
-    drawFaceCircle(ctx, result.detection.box, dominant.color)
-    drawDominantEmoji(ctx, result.detection.box, dominant.emoji)
     drawEmotionBars(ctx, result.expressions)
   }
 
@@ -134,6 +147,7 @@ async function main() {
     await loadModels()
     status.textContent = 'Starting camera...'
     await startCamera()
+    syncOverlay()
     status.classList.add('hidden')
     detect()
   } catch (err) {
