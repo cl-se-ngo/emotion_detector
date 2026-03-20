@@ -6,7 +6,7 @@ const status = document.getElementById('status')
 const noFace = document.getElementById('no-face')
 const emotionBars = document.getElementById('emotion-bars')
 
-const MODELS_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'
+const MODELS_URL = `${import.meta.env.BASE_URL}models`
 
 const EMOTIONS = ['happy', 'sad', 'angry', 'surprised', 'fearful', 'disgusted', 'neutral']
 
